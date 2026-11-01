@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: test js action
         id: greet
-        uses: ./github/actions/cloudflare-purge-cache
+        uses: ./.github/actions/cloudflare-purge-cache
         with:
           who: thiago
           shoutout: true
