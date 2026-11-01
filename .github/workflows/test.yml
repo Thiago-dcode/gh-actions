@@ -12,5 +12,5 @@ jobs:
         uses: ./.github/actions/cloudflare-purge-cache
         with:
           who: thiago
-          shoutout: true
+          shout: true
       - run: echo "${{ steps.hello.outputs.greeting }}"
