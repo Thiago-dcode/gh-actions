@@ -1,0 +1,15 @@
+name: test
+
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: test js action
+        id: greet
+        uses: ./github/actions/cloudflare-purge-cache
+        with:
+          who: thiago
+          shoutout: true
+      - run: echo "${{ steps.hello.outputs.greeting }}"

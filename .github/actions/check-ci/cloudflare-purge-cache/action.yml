@@ -1,0 +1,23 @@
+name: Greet
+description: Prints a greeting and returns it as an output
+author: Thiago-dcode
+branding:
+  icon: message-circle
+  color: blue
+
+inputs:
+  who:
+    description: Who to greet
+    required: true
+  shout:
+    description: Return the greeting in uppercase (true or false)
+    required: false
+    default: "false"
+
+outputs:
+  greeting:
+    description: The greeting that was generated
+
+runs:
+  using: node24 # node20 on older setups
+  main: dist/index.js # the built file, not index.js
