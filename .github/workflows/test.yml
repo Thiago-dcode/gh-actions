@@ -3,7 +3,7 @@ name: test
 on: workflow_dispatch
 
 jobs:
-  test:
+  test-purge:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -11,6 +11,9 @@ jobs:
         id: greet
         uses: ./.github/actions/cloudflare-purge-cache
         with:
-          who: thiago
-          shoutout: true
+          # FAKE values for testing only. Cloudflare will reject them, so the
+          # action should log a warning and still pass.
+          domain: example.com
+          api-token: fake-token-for-testing
+          zone-id: 00000000000000000000000000000000
       - run: echo "${{ steps.hello.outputs.greeting }}"

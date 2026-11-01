@@ -28752,16 +28752,16 @@ function file_command_issueFileCommand(command, message) {
     if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
     }
-    if (!external_fs_namespaceObject.existsSync(filePath)) {
+    if (!fs.existsSync(filePath)) {
         throw new Error(`Missing file at path: ${filePath}`);
     }
-    external_fs_namespaceObject.appendFileSync(filePath, `${utils_toCommandValue(message)}${external_os_namespaceObject.EOL}`, {
+    fs.appendFileSync(filePath, `${toCommandValue(message)}${os.EOL}`, {
         encoding: 'utf8'
     });
 }
 function file_command_prepareKeyValueMessage(key, value) {
-    const delimiter = `ghadelimiter_${external_crypto_namespaceObject.randomUUID()}`;
-    const convertedValue = utils_toCommandValue(value);
+    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
+    const convertedValue = toCommandValue(value);
     // These should realistically never happen, but just in case someone finds a
     // way to exploit uuid generation let's not allow keys or values that contain
     // the delimiter.
@@ -28771,7 +28771,7 @@ function file_command_prepareKeyValueMessage(key, value) {
     if (convertedValue.includes(delimiter)) {
         throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
     }
-    return `${key}<<${delimiter}${external_os_namespaceObject.EOL}${convertedValue}${external_os_namespaceObject.EOL}${delimiter}`;
+    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
 }
 //# sourceMappingURL=file-command.js.map
 ;// CONCATENATED MODULE: external "path"
@@ -31393,10 +31393,10 @@ function getBooleanInput(name, options) {
 function setOutput(name, value) {
     const filePath = process.env['GITHUB_OUTPUT'] || '';
     if (filePath) {
-        return file_command_issueFileCommand('OUTPUT', file_command_prepareKeyValueMessage(name, value));
+        return issueFileCommand('OUTPUT', prepareKeyValueMessage(name, value));
     }
-    process.stdout.write(external_os_namespaceObject.EOL);
-    command_issueCommand('set-output', { name }, utils_toCommandValue(value));
+    process.stdout.write(os.EOL);
+    issueCommand('set-output', { name }, toCommandValue(value));
 }
 /**
  * Enables or disables the echoing of commands into stdout for the rest of the step.
@@ -31440,7 +31440,7 @@ function core_debug(message) {
  * @param properties optional properties to add to the annotation.
  */
 function error(message, properties = {}) {
-    command_issueCommand('error', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    issueCommand('error', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Adds a warning issue
@@ -31448,7 +31448,7 @@ function error(message, properties = {}) {
  * @param properties optional properties to add to the annotation.
  */
 function warning(message, properties = {}) {
-    issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('warning', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Adds a notice issue
@@ -31553,29 +31553,47 @@ function getIDToken(aud) {
 ;// CONCATENATED MODULE: ./index.js
 
 
-// Plain function with the logic: easy to test on its own
-function buildGreeting(name, shout) {
-  const text = `Hello, ${name}!`;
-  return shout ? text.toUpperCase() : text;
-}
+const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
 
+// Never fails the step: every problem is reported as a warning and the step exits with 0.
 async function run() {
   try {
-    const name = getInput("who", { required: true }); // read an input
-    const shout = getBooleanInput("shout");
+    // Input names must match action.yml (GitHub passes "api-token" as INPUT_API-TOKEN).
+    const domain = getInput("domain").trim();
+    const apiToken = getInput("api-token");
+    const zoneId = getInput("zone-id");
 
-    console.log("INPUTS", name, shout); // "true"/"false" → boolean
-
-    info("INPUTS", name, shout);
-    if (name.length > 50) {
-      throw new Error("`who` must be 50 characters or fewer");
+    if (!domain || !apiToken || !zoneId) {
+      warning("domain, api-token or zone-id not provided, skipping cache purge.");
+      return;
     }
 
-    const greeting = buildGreeting(name, shout);
-    info(greeting); // log line
-    setOutput("greeting", greeting); // return a value
+    const response = await fetch(
+      `${CLOUDFLARE_API}/zones/${encodeURIComponent(zoneId)}/purge_cache`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ hosts: [domain] }),
+      },
+    );
+
+    // Non-JSON bodies (e.g. a 5xx HTML page) become an empty object instead of throwing.
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.success) {
+      warning(
+        `Cloudflare cache purge failed for ${domain} (HTTP ${response.status}): ` +
+          JSON.stringify(data.errors ?? data),
+      );
+      return;
+    }
+
+    info(`Purged Cloudflare cache for ${domain}.`);
   } catch (error) {
-    setFailed(error.message); // fail the step (exit code 1)
+    warning(`Cloudflare cache purge failed: ${error.message}`);
   }
 }
 
