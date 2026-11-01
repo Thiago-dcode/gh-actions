@@ -13,4 +13,4 @@ jobs:
         with:
           who: thiago
           shout: true
-      - run: echo "${{ steps.hello.outputs.greeting }}"
+      - run: echo "${{ steps.greet.outputs.greeting }}"
