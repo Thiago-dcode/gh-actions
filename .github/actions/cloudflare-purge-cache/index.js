@@ -1,4 +1,4 @@
-const core = require("@actions/core");
+import * as core from "@actions/core";
 
 // Plain function with the logic: easy to test on its own
 function buildGreeting(name, shout) {
