@@ -48,7 +48,32 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: ${{ inputs.package-manager }}
 
+    # Each package manager has its own lockfile. Resolve the right one so the
+    # cache key below changes whenever dependencies change.
+    - name: Resolve lockfile
+      id: lockfile
+      shell: bash
+      env:
+        PM: ${{ inputs.package-manager }}
+      run: |
+        case "$PM" in
+          pnpm) lock="pnpm-lock.yaml" ;;
+          npm)  lock="package-lock.json" ;;
+          yarn) lock="yarn.lock" ;;
+        esac
+        echo "path=$lock" >> "$GITHUB_OUTPUT"
+
+    # Restores node_modules when the lockfile is unchanged. On a hit, the
+    # install step below is skipped.
+    - name: Restore node_modules
+      id: nm-cache
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ inputs.package-manager }}-node${{ inputs.node-version }}-${{ hashFiles(steps.lockfile.outputs.path) }}
+
     - name: Install dependencies
+      if: ${{ steps.nm-cache.outputs.cache-hit != 'true' }}
       shell: bash
       env:
         PM: ${{ inputs.package-manager }}
